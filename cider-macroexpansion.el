@@ -197,9 +197,8 @@ and point is placed after the expanded form."
   "Minor mode for CIDER macroexpansion.
 
 \\{cider-macroexpansion-mode-map}"
-  nil
-  " Macroexpand"
-  cider-macroexpansion-mode-map)
+  :lighter " Macroexpand"
+  :keymap cider-macroexpansion-mode-map)
 
 (provide 'cider-macroexpansion)
 

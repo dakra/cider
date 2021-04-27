@@ -27,10 +27,9 @@
 (require 'cider-compat)
 
 (define-minor-mode cider-popup-buffer-mode
-  "Mode for CIDER popup buffers"
-  nil
-  (" cider-tmp")
-  '(("q" .  cider-popup-buffer-quit-function)))
+  "Mode for CIDER popup buffers."
+  :lighter " cider-tmp"
+  :keymap '(("q" .  cider-popup-buffer-quit-function)))
 
 (defvar-local cider-popup-buffer-quit-function #'cider-popup-buffer-quit
   "The function that is used to quit a temporary popup buffer.")

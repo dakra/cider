@@ -912,7 +912,9 @@ Register CALLBACK as the response handler."
                       callback
                       connection))
 
-(define-minor-mode cider-enlighten-mode nil nil (cider-mode " light")
+(define-minor-mode cider-enlighten-mode
+  "Minor mode that displays the value of locals in realtime."
+  :lighter (cider-mode " light")
   :global t)
 
 (defun nrepl--eval-request (input &optional ns line column)
