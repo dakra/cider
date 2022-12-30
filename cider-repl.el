@@ -772,6 +772,23 @@ Clear the part where `cider-repl-buffer-size-limit' is exceeded."
   (when (> (buffer-size) cider-repl-buffer-size-limit)
     (cider-repl-trim-top-of-buffer buffer)))
 
+(defun cider-repl--interpret-crlf (string)
+  "Change STRING in the same way as it would be displayed in a shell.
+I.e. \r will jump to the beginning of the line and the characters
+after will overwrite what's already written on this line.
+\n will always insert a newline at the end of line."
+  (with-temp-buffer
+    (dolist (char (append string nil))
+      (cond ((char-equal char ?\r)
+             (move-beginning-of-line 1))
+            ((char-equal char ?\n)
+             (move-end-of-line 1) (newline))
+            (t
+             (when (/= (point) (point-max))  ; Overwrite character
+               (delete-char 1))
+             (insert char))))
+    (buffer-substring (point-min) (point-max))))
+
 (defun cider-repl--emit-output (buffer string face)
   "Using BUFFER, emit STRING as output font-locked using FACE.
 Before inserting, run `cider-repl-preoutput-hook' on STRING."
@@ -779,6 +796,11 @@ Before inserting, run `cider-repl-preoutput-hook' on STRING."
     (save-excursion
       (cider-save-marker cider-repl-output-start
         (goto-char cider-repl-output-end)
+        (when (char-equal (aref string 0) ?\r)
+          (setq string (concat (buffer-substring (line-beginning-position) (line-end-position))
+                               string))
+          (delete-region (line-beginning-position) (line-end-position)))
+        (setq string (cider-repl--interpret-crlf string))
         (setq string (propertize string
                                  'font-lock-face face
                                  'rear-nonsticky '(font-lock-face)))
