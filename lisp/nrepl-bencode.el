@@ -115,10 +115,11 @@ list or dict."
           (progn (goto-char pos0)
                  (cons :stub stack))
         (goto-char end)
-        ;; normalise any platform-specific newlines
+        ;; normalise any platform-specific newlines, but leave a lone \r
+        ;; intact so the REPL can interpret it as a carriage return
         (let* ((original (buffer-substring-no-properties beg end))
                (result (if (string-search "\r" original)
-                           (replace-regexp-in-string "\r\n\\|\n\r\\|\r" "\n" original)
+                           (replace-regexp-in-string "\r\n\\|\n\r" "\n" original)
                          original)))
           (cons nil (nrepl--push result stack))))))
    ;; integer
