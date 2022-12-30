@@ -70,7 +70,9 @@ If object is incomplete, return a decoded path."
       (expect (nrepl-bdecode-string "5:spam\n") :to-equal '("spam\n"))
       (expect (nrepl-bdecode-string "6:spam\n") :to-equal '("spam\n"))
       (expect (nrepl-bdecode-string "6:spam\n") :to-equal '("spam\n"))
-      (expect (nrepl-bdecode-string "5:spam\r") :to-equal '("spam\n")))
+      ;; a lone \r is left intact so the REPL can interpret it as a
+      ;; carriage return (e.g. for progress bars overwriting a line)
+      (expect (nrepl-bdecode-string "5:spam\r") :to-equal '("spam\r")))
 
     (it "decodes integers"
       (expect (nrepl-bdecode-string "i3e") :to-equal '(3))
