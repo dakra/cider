@@ -44,13 +44,13 @@ KILL-BUFFER-P is passed along."
   (interactive)
   (funcall cider-popup-buffer-quit-function kill-buffer-p))
 
-(defun cider-popup-buffer (name &optional select mode ancillary)
+(defun cider-popup-buffer (name &optional select mode ancillary no-erase-buffer-p no-add-line-break-p)
   "Create new popup buffer called NAME.
 If SELECT is non-nil, select the newly created window.
 If major MODE is non-nil, enable it for the popup buffer.
 If ANCILLARY is non-nil, the buffer is added to `cider-ancillary-buffers'
 and automatically removed when killed."
-  (thread-first (cider-make-popup-buffer name mode ancillary)
+  (thread-first (cider-make-popup-buffer name mode ancillary no-erase-buffer-p no-add-line-break-p)
                 (buffer-name)
                 (cider-popup-buffer-display select)))
 
@@ -113,10 +113,14 @@ If prefix argument KILL is non-nil, kill the buffer instead of burying it."
   "A list ancillary buffers created by the various CIDER commands.
 We track them mostly to be able to clean them up on quit.")
 
-(defun cider-make-popup-buffer (name &optional mode ancillary)
+(defun cider-make-popup-buffer (name &optional mode ancillary no-erase-buffer-p no-add-line-break-p)
   "Create a temporary buffer called NAME using major MODE (if specified).
 If ANCILLARY is non-nil, the buffer is added to `cider-ancillary-buffers'
 and automatically removed when killed.
+
+When NO-ERASE-BUFFER-P is non-nil, the buffer's existing contents are kept
+(a leading newline is inserted unless NO-ADD-LINE-BREAK-P is also non-nil)
+instead of being erased, so output accumulates across evaluations.
 
 The buffer is pinned to the REPL of the session it is created from (via
 `cider--ancillary-buffer-repl') and adopts that session's project
@@ -130,7 +134,12 @@ the originating session rather than relying on sesman re-resolution."
     (with-current-buffer (get-buffer-create name)
       (kill-all-local-variables)
       (setq buffer-read-only nil)
-      (erase-buffer)
+      (if no-erase-buffer-p
+          (unless no-add-line-break-p
+            (goto-char (point-min))
+            (insert "\n")
+            (goto-char (point-min)))
+        (erase-buffer))
       (when mode
         (funcall mode))
       (cider-popup-buffer-mode 1)
