@@ -699,6 +699,8 @@ The OUTPUT can be sent to either a dedicated output buffer or the current
 REPL buffer.  This is controlled by `cider-interactive-eval-output-destination'.
 REPL-EMIT-FUNCTION emits the OUTPUT."
   (pcase cider-interactive-eval-output-destination
+    (`cider-result-buffer (let ((result-buffer (cider-popup-buffer cider-result-buffer nil 'clojure-mode 'ancillary t t)))
+                            (cider-emit-into-popup-buffer result-buffer (concat "out: " output))))
     (`output-buffer (let ((output-buffer (or (get-buffer cider-output-buffer)
                                              (cider-popup-buffer cider-output-buffer t))))
                       (cider-emit-into-popup-buffer output-buffer output)
@@ -918,15 +920,15 @@ This is used by pretty-printing commands."
     (cider-make-eval-handler
      :buffer chosen-buffer
      :on-value (lambda (value)
-                 (cider-emit-into-popup-buffer chosen-buffer (ansi-color-apply value) nil t))
+                 (cider-emit-into-popup-buffer chosen-buffer (concat (ansi-color-apply value) "\n") nil t))
      :on-stdout #'cider-emit-interactive-eval-output
      :on-stderr #'cider-emit-interactive-eval-err-output
      :on-eval-error (lambda ()
-                      (when (and (buffer-live-p chosen-buffer)
-                                 (member (buffer-name chosen-buffer)
-                                         cider-ancillary-buffers))
-                        (with-selected-window (get-buffer-window chosen-buffer)
-                          (cider-popup-buffer-quit-function t)))
+                      ;; (when (and (buffer-live-p chosen-buffer)
+                      ;;            (member (buffer-name chosen-buffer)
+                      ;;                    cider-ancillary-buffers))
+                      ;;   (with-selected-window (get-buffer-window chosen-buffer)
+                      ;;     (cider-popup-buffer-quit-function t)))
                       ;; also call the default nrepl-err-handler-function so
                       ;; our custom behavior doesn't void the base behavior:
                       (when nrepl-err-handler-function
@@ -1271,8 +1273,15 @@ With an optional PRETTY-PRINT prefix it pretty-prints the result."
 (defun cider--pprint-eval-form (form)
   "Pretty print FORM in popup buffer."
   (let* ((buffer (current-buffer))
-         (result-buffer (cider-popup-buffer cider-result-buffer nil 'clojure-mode 'ancillary))
+         (form-str (if (stringp form) form (apply #'buffer-substring form)))
+         (sep-str (concat "\n=" (cider-current-ns) " <" (buffer-name)":" (number-to-string (line-number-at-pos)) ">=>\n"))
+         (result-buffer (cider-popup-buffer cider-result-buffer nil 'clojure-mode 'ancillary t))
          (handler (cider-popup-eval-handler result-buffer form buffer)))
+    (with-current-buffer result-buffer
+      (let ((inhibit-read-only t))
+        (insert form-str
+                (propertize sep-str 'font-lock-face 'cider-repl-prompt-face)))
+      (setq cider-popup-output-marker (point-marker)))
     (with-current-buffer buffer
       (cider-interactive-eval (when (stringp form) form)
                               handler
