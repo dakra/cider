@@ -87,7 +87,8 @@ by adding BUFFER-NAME to the `special-display-buffer-names' list."
           ;; Non nil `inhibit-switch-frame' ensures that the other frame is not selected
           ;; if that's where the buffer is being shown.
           (funcall (if select #'pop-to-buffer #'display-buffer)
-                   buffer-name `(nil . ((inhibit-same-window .
+                   buffer-name `(nil . ((inhibit-switch-frame . t)
+                                        (inhibit-same-window .
                                                              ;; A non-nil value prevents the same window from being used for display:
                                                              ,pop-up-windows)
                                         (reusable-frames .
