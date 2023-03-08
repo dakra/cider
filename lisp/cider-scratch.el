@@ -33,10 +33,12 @@
 (require 'cider-eval)
 (require 'clojure-mode)
 (require 'easymenu)
+(require 'project)
+(require 'no-littering)
 
 (defcustom cider-scratch-initial-message
-  ";; This buffer is for Clojure experiments and evaluation.\n
-;; Press C-j to evaluate the last expression.\n
+  ";; This buffer is for Clojure experiments and evaluation.
+;; Press C-j to evaluate the last expression.
 ;; You can also press C-u C-j to evaluate the expression and pretty-print its result.\n\n"
   "The initial message displayed in new scratch buffers."
   :type 'string
@@ -47,6 +49,7 @@
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map clojure-mode-map)
     (define-key map (kbd "C-j") #'cider-eval-print-last-sexp)
+    (define-key map (kbd "C-x C-s") #'cider-scratch-project-save-buffer)
     (define-key map [remap paredit-newline] #'cider-eval-print-last-sexp)
     (define-key map [remap paredit-C-j] #'cider-eval-print-last-sexp)
     (easy-menu-define cider-clojure-interaction-mode-menu map
@@ -70,12 +73,19 @@
   (or (get-buffer cider-scratch-buffer-name)
       (cider-scratch--create-buffer)))
 
+(defun cider-scratch-project--kill-buffer ()
+  "Check if scratch buffer is modified before killing."
+  (when (and (buffer-modified-p)
+             (yes-or-no-p "Cider scratch buffer modified.  Save before killing?"))
+    (cider-scratch-project-save-buffer)))
+
 (define-derived-mode cider-clojure-interaction-mode clojure-mode "Clojure Interaction"
   "Major mode for typing and evaluating Clojure forms.
 Like `clojure-mode' except that \\[cider-eval-print-last-sexp] evals the Lisp expression
 before point, and prints its value into the buffer, advancing point.
 
 \\{cider-clojure-interaction-mode-map}"
+  (add-hook 'kill-buffer-hook #'cider-scratch-project--kill-buffer nil t)
   (setq-local sesman-system 'CIDER))
 
 (defun cider-scratch--insert-welcome-message ()
@@ -94,6 +104,52 @@ before point, and prints its value into the buffer, advancing point.
   (interactive)
   (erase-buffer)
   (cider-scratch--insert-welcome-message))
+
+(defvar-local cider-scratch-project-file nil)
+
+(defun cider-scratch-project--buffer-name ()
+  "Return buffer name for cider-scratch for the current project."
+  (let ((name (project-name (project-current t))))
+    (concat "*cider-scratch [" name "]*")))
+
+(defun cider-scratch-project--filename ()
+  "Return the file name where the cider-scratch buffer is saved to."
+  (let* ((path (expand-file-name (project-root (project-current t))))
+         (fn (string-trim (string-replace "/" "_" (string-replace "-" "_" path)) "_" "_")))
+    (no-littering-expand-var-file-name
+     (concat "cider-scratch/" fn ".cljc"))))
+
+(defun cider-scratch-project-save-buffer ()
+  "Save cider-scratch-project buffer."
+  (interactive)
+  (unless (cider-scratch-project--filename)
+    (user-error "Not in a cider-scratch-project buffer"))
+  (write-region (point-min) (point-max) (cider-scratch-project--filename))
+  (set-buffer-modified-p nil)
+  (message "%s saved." (cider-scratch-project--buffer-name)))
+
+(defun cider-scratch-project--create-buffer ()
+  "Create a new scratch buffer."
+  (with-current-buffer (get-buffer-create (cider-scratch-project--buffer-name))
+    (cider-clojure-interaction-mode)
+    (when (file-exists-p (cider-scratch-project--filename))
+      (insert-file-contents (cider-scratch-project--filename)))
+    (when (= (point-min) (point-max))
+      (cider-scratch--insert-welcome-message))
+    (set-buffer-modified-p nil)
+    (current-buffer)))
+
+(defun cider-scratch-project-find-or-create-buffer ()
+  "Find or create the scratch buffer."
+  (let ((buf-name (cider-scratch-project--buffer-name)))
+    (or (get-buffer buf-name)
+        (cider-scratch-project--create-buffer))))
+
+;;;###autoload
+(defun cider-scratch-project ()
+  "Like `cider-scratch' but buffer is saved/restored for each project."
+  (interactive)
+  (pop-to-buffer (cider-scratch-project-find-or-create-buffer)))
 
 (provide 'cider-scratch)
 
