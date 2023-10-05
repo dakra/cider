@@ -271,6 +271,7 @@ buffer, defaults to (cider-current-repl)."
     (nrepl-request:eval input
                         (lambda (response)
                           (when cider-show-spinner
+                            (cider-eval-spinner eval-buffer response)
                             (cider-eval-spinner connection response))
                           (when (and (buffer-live-p eval-buffer)
                                      (member "done" (nrepl-dict-get response "status")))
@@ -279,6 +280,7 @@ buffer, defaults to (cider-current-repl)."
                           (funcall callback response))
                         connection
                         ns line column additional-params)
+    (cider-spinner-start eval-buffer)
     (cider-spinner-start connection)))
 
 (defun cider-nrepl-sync-request:eval (input &optional connection ns)
